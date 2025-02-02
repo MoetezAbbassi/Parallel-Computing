@@ -3,101 +3,44 @@
 #===============================================================================
 
 
-#Method 1 to install iris dataset
-
-library("datasets")
-data("iris")
-iris <- datasets::iris
-View(iris)
-
-#Method 2 to install iris dataset
+#load dataset
 
 install.packages("RCurl")
 
 library(RCurl)
-iris <- read.csv(text=getURL("https://raw.githubusercontent.com/MoetezAbbassi/Classification-Model-with-R/refs/heads/main/iris.csv?token=GHSAT0AAAAAAC6CJGKT46DO6YNTMT6N2RCCZ454ILA"))
+dhfr <- read.csv(text=getURL("https://raw.githubusercontent.com/MoetezAbbassi/Parallel-Computing/3f5ad54cb5ff3e535c3eeffdbf93e52f8739f926/dhfr.csv"))
 
 
 #View the file:
-View(iris)
+View(dhfr)
 
 
 #Preview:
-head(iris,4)
-tail(iris,4)
+head(dhfr,4)
+tail(dhfr,4)
 
 #summary for iris:
-summary(iris)
-iris$Sepal.Length
+summary(dhfr)
 
-is.na(iris)
+is.na(dhfr)
 
-#install skinr package:
-install.packages("skimr")
-
-library(skimr)
-skim(iris) #summary statistics
-
-iris %>%
-  dplyr::group_by(Species) %>%
-  skim()
-
-#================================================
-#¨Part 2: Data Visualization
-#================================================
-
-plot(iris)
-plot(iris, col="red")
-
-plot(iris$Sepal.Length, iris$Sepal.Width, col="green", xlab="Sepal Length", ylab="Width")
-
-hist(iris$Sepal.Width, col="blue")
-
-#Feature Plot:
-install.packages("caret")
-library(caret)
-library(ggplot2)
-
-# Create the feature plot with boxplots
-
-featurePlot(x = iris[, 1:4], 
-            y = iris$Species)
-# Make sure Species is a factor
-iris$Species <- as.factor(iris$Species)
-
-# Create the feature plot
-featurePlot(x = iris[, 1:4], 
-            y = iris$Species)
-
-iris_long <- reshape2::melt(iris, id.vars = "Species")
-
-# Boxplot for each feature
-ggplot(iris_long, aes(x = Species, y = value)) +
-  geom_boxplot() +
-  facet_wrap(~variable, scales = "free") +
-  theme_minimal()
-
-
-featurePlot(x = iris[, 1:4],  # Features (Sepal.Length, Sepal.Width, etc.)
-            y = iris$Species,  # Target variable (Species)
-            plot = "box",  # Type of plot (boxplot)
-            strip = strip.custom(par.strip.text = list(cex = 0.7)),  # Custom text size for strip labels
-            scales = list(x = list(relation = "free"),  # Allow free scaling on x-axis
-                          y = list(relation = "free")))  # Allow free scaling on y-axis
 
 #================================#
-#Part 3: Building Classification Model
+#Part 2: Building Classification Model
 #SVM : Maximizes distance between clusters
 #================================#
 set.seed(100)
+install.packages("caret")
+library(caret)
+
 
 # Split the dataset into training (80%) and testing (20%)
-TrainingIndex <- createDataPartition(iris$Species, p = 0.8, list = FALSE)
-TrainingSet <- iris[TrainingIndex, ]  # Training Set
-TestingSet <- iris[-TrainingIndex, ]  # Testing Set
+TrainingIndex <- createDataPartition(dhfr$Y, p = 0.8, list = FALSE)
+TrainingSet <- dhfr[TrainingIndex, ]  # Training Set
+TestingSet <- dhfr[-TrainingIndex, ]  # Testing Set
 
 # Build Training Model (SVM with Polynomial Kernel)
-Model <- train(Species ~ ., data = TrainingSet,
+Model <- train(Y ~ ., data = TrainingSet,
                method = "svmPoly",
                na.action = na.omit,
                preProcess = c("scale", "center"),
@@ -105,7 +48,7 @@ Model <- train(Species ~ ., data = TrainingSet,
                tuneGrid = data.frame(degree = 1, scale = 1, C = 1))
 
 # Build Cross-Validation Model (10-fold CV)
-Model.cv <- train(Species ~ ., data = TrainingSet,
+Model.cv <- train(Y ~ ., data = TrainingSet,
                   method = "svmPoly",
                   na.action = na.omit,
                   preProcess = c("scale", "center"),
@@ -121,10 +64,34 @@ Model.training <- predict(Model, TrainingSet)  # Predictions on training set
 Model.testing <- predict(Model, TestingSet)    # Predictions on testing set
 Model.cv.pred <- predict(Model.cv, TestingSet) # Cross-validation predictions
 
+
+
+# Convert to factors
+Model.training <- as.factor(Model.training)
+TrainingSet$Y <- as.factor(TrainingSet$Y)
+
+# Ensure same levels
+Model.training <- factor(Model.training, levels = levels(TrainingSet$Y))
+
+Model.testing <- as.factor(Model.testing)
+TestingSet$Y <- as.factor(TestingSet$Y)
+
+
 # Compute Confusion Matrices
-Model.training.confusion <- confusionMatrix(Model.training, TrainingSet$Species)
-Model.testing.confusion <- confusionMatrix(Model.testing, TestingSet$Species)
-Model.cv.confusion <- confusionMatrix(Model.cv.pred, TestingSet$Species)
+Model.training.confusion <- confusionMatrix(Model.training, TrainingSet$Y)
+Model.testing.confusion <- confusionMatrix(Model.testing, TestingSet$Y)
+Model.cv.confusion <- confusionMatrix(Model.cv.pred, TestingSet$Y)
+
+
+
+
+
+
+
+
+# Compute confusion matrix
+Model.training.confusion <- confusionMatrix(Model.training, TrainingSet$Y)
+print(Model.training.confusion)
 
 # Print Confusion Matrices
 print(Model.training.confusion)
@@ -135,3 +102,21 @@ print(Model.cv.confusion)
 Importance<- varImp(Model)
 plot(Importance)
 plot(Importance, col="red")
+
+
+
+#Parallel Computing:
+#======================================
+#Random forest
+start.time <- proc.time()
+Model <- train(Y ~ .,
+               data =TrainingSet,
+               method="rf")
+stop.time <-proc.time()
+run.time <- stop.time -start.time
+print(run.time)
+
+print("x")
+q()
+
+
